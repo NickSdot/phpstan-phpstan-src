@@ -8,6 +8,7 @@
   ],
   "files": [
 	"preload.php",
+	"preload-analysis.php",
 	"vendor/composer/installed.php",
     "vendor/attributes.php",
     "vendor/turbo-shadowed-classes.json",

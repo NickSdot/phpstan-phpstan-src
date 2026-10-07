@@ -46,6 +46,16 @@ use Symfony\Component\Console\Helper\ProgressBar;
 		$vendorDirectory = $cwd . '/vendor';
 	}
 	$devOrPharLoader->unregister();
+	// Project autoload files can use PHPStan's API before its classes have
+	// been loaded. Forward only our classes and scoped dependencies so the
+	// project still gets its own versions of unscoped dependencies.
+	$phpstanAutoloader = static function (string $class) use ($devOrPharLoader): void {
+		if (strpos($class, 'PHPStan\\') !== 0 && strpos($class, '_PHPStan_') !== 0) {
+			return;
+		}
+		$devOrPharLoader->loadClass($class);
+	};
+	spl_autoload_register($phpstanAutoloader, true, true);
 
 	// fix missing key for vendor/hoa/protocol/Wrapper.php
 	$existingComposerAutoloadFiles = $GLOBALS['__composer_autoload_files'] ?? [];
@@ -124,6 +134,7 @@ use Symfony\Component\Console\Helper\ProgressBar;
 		$GLOBALS['__phpstanAutoloadFunctions'] = $newAutoloadFunctions;
 	}
 
+	spl_autoload_unregister($phpstanAutoloader);
 	$devOrPharLoader->register(true);
 
 	$application = new \Symfony\Component\Console\Application(

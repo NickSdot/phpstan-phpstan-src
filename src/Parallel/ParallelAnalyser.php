@@ -35,6 +35,7 @@ use function defined;
 use function escapeshellarg;
 use function getenv;
 use function ini_get;
+use function is_file;
 use function max;
 use function parse_url;
 use function sprintf;
@@ -134,6 +135,15 @@ final class ParallelAnalyser
 		$deferred = new Deferred();
 
 		$useFork = $this->forkParallelChecker->isSupported();
+		if ($useFork && $numberOfProcesses > 1 && count($jobs) > 0) {
+			// Compile once before forking so workers inherit the analysis classes
+			// instead of each compiling them. Cache hits and single-worker runs
+			// keep loading only the classes they need. Generated in PHAR builds.
+			$preloadScript = __DIR__ . '/../../preload-analysis.php';
+			if (is_file($preloadScript)) {
+				require_once $preloadScript;
+			}
+		}
 
 		$server = new TcpServer('127.0.0.1:0', $loop);
 		$this->processPool = new ProcessPool($server, static function () use ($deferred, &$jobs, &$internalErrors, &$internalErrorsCount, &$reachedInternalErrorsCountLimit, &$errors, &$filteredPhpErrors, &$allPhpErrors, &$locallyIgnoredErrors, &$linesToIgnore, &$unmatchedLineIgnores, &$collectedData, &$dependencies, &$usedTraitDependencies, &$valueDependencies, &$packageDependencies, &$exportedNodes, &$peakMemoryUsages, &$allProcessedFiles, $arenaName): void {

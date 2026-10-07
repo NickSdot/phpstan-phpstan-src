@@ -26,6 +26,7 @@ use function realpath;
 use function rename;
 use function sprintf;
 use function str_replace;
+use function str_starts_with;
 use function strlen;
 use function substr;
 use function unlink;
@@ -199,6 +200,7 @@ php;
 		}
 
 		$output = '';
+		$sourceOutput = '';
 		foreach ($finder->files()->name('*.php')->in([
 			$this->buildDir . '/src',
 			$vendorDir . '/nikic/php-parser/lib/PhpParser',
@@ -228,8 +230,18 @@ php;
 				continue;
 			}
 			$path = substr($realPath, strlen($root));
-			$output .= 'require_once __DIR__ . ' . var_export($path, true) . ';' . "\n";
+			$require = 'require_once __DIR__ . ' . var_export($path, true) . ';' . "\n";
+			if (str_starts_with($realPath, $this->buildDir . '/src/')) {
+				$sourceOutput .= $require;
+			} else {
+				$output .= $require;
+			}
 		}
+
+		// Unscoped dependencies must load before the project's Composer loader
+		// to preserve version isolation. Our own classes use the autoloader,
+		// avoiding compilation of unused analysis code on every invocation.
+		// The separate source preload is used before multiple workers fork.
 
 		$polyfillBootstraps = [
 			'/vendor/symfony/polyfill-php80/bootstrap.php',
@@ -247,6 +259,7 @@ php;
 		}
 
 		file_put_contents($preloadScript, sprintf($template, $output));
+		file_put_contents($this->buildDir . '/preload-analysis.php', sprintf($template, $sourceOutput));
 	}
 
 	private function deleteUnnecessaryVendorCode(): void
