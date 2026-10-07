@@ -131,7 +131,6 @@ jobs:
           path: |
             tmp/phpstan.phar
             tmp/phpstan
-            tmp/phpstan-startup.php
 
       - name: "Run PHAR"
         working-directory: "compiler"
@@ -2160,7 +2159,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') || steps.checksum-difference.outputs.result == 'different'
         run: |
           mv phpstan.phar phpstan-dist/phpstan.phar
-          mv phpstan phpstan-startup.php phpstan-dist/
+          mv phpstan phpstan-dist/
 
       - name: "Make PHPStan entrypoints executable"
         if: startsWith(github.ref, 'refs/tags/') || steps.checksum-difference.outputs.result == 'different'

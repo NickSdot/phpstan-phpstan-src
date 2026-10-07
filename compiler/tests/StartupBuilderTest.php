@@ -24,7 +24,7 @@ use const PHP_BINARY;
 final class StartupBuilderTest extends TestCase
 {
 
-	public function testDowngradedStartupBundleWithoutAutoloading(): void
+	public function testDowngradedEntrypointWithoutAutoloading(): void
 	{
 		$root = dirname(__DIR__, 2);
 		require_once $root . '/compiler/src/StartupBuilder.php';
@@ -57,15 +57,13 @@ final class StartupBuilderTest extends TestCase
 			$builder = new StartupBuilder();
 			$builder->build($directory, $directory . '/package', '_PHPStan_test_Startup');
 
-			// Both artifacts retain PHP 7.4 syntax after namespace isolation.
-			$bundle = file_get_contents($directory . '/package/phpstan-startup.php');
-			self::assertNotFalse($bundle);
+			self::assertFileDoesNotExist($directory . '/package/phpstan-startup.php');
 
-			$parser = (new ParserFactory())->createForVersion(PhpVersion::fromString('7.4'));
-			self::assertNotNull($parser->parse($bundle));
-
+			// The complete entrypoint retains PHP 7.4 syntax after namespace isolation.
 			$entrypoint = file_get_contents($directory . '/package/phpstan');
 			self::assertNotFalse($entrypoint);
+
+			$parser = (new ParserFactory())->createForVersion(PhpVersion::fromString('7.4'));
 			self::assertNotNull($parser->parse($entrypoint));
 
 			// A build namespace change must not churn the release checksum.
@@ -75,8 +73,8 @@ final class StartupBuilderTest extends TestCase
 			self::assertSame($manifest, file_get_contents($directory . '/other-build/phpstan-startup.json'));
 
 			// Run without Composer or any classes held by PHPUnit.
-			copy(__DIR__ . '/data/startup-bundle-probe.php.template', $directory . '/probe.php');
-			$probe = new Process([PHP_BINARY, $directory . '/probe.php'], $directory);
+			copy(__DIR__ . '/data/startup-entrypoint-probe.php.template', $directory . '/probe.php');
+			$probe = new Process([PHP_BINARY, '-d', 'phar.readonly=0', $directory . '/probe.php'], $directory);
 
 			self::assertSame(0, $probe->run(), $probe->getErrorOutput());
 			self::assertSame('ok', $probe->getOutput());

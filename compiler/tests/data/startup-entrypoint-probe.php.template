@@ -1,12 +1,13 @@
 <?php declare(strict_types = 1);
 
-require __DIR__ . '/package/phpstan-startup.php';
+$phar = new Phar(__DIR__ . '/package/phpstan.phar');
+$phar['bin/phpstan'] = '<?php echo "ok";';
+$phar->setStub('<?php __HALT_COMPILER();');
 
 $_SERVER['BLACKFIRE_AGENT_SOCKET'] = 'test';
-\_PHPStan_test_Startup\Turbo\TurboProcessRestarter::restartIfSuitable(['phpstan', 'analyse']);
+
+require __DIR__ . '/package/phpstan';
 
 if (\_PHPStan_test_Startup\Turbo\TurboExtensionSelector::findExtension(__DIR__ . '/phpstan.phar') !== null) {
 	exit(2);
 }
-
-echo 'ok';

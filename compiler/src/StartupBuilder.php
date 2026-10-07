@@ -12,6 +12,7 @@ use PhpParser\NodeVisitorAbstract;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard;
 use RuntimeException;
+use function array_merge;
 use function chmod;
 use function file_get_contents;
 use function file_put_contents;
@@ -36,19 +37,19 @@ final class StartupBuilder
 			throw new RuntimeException('Invalid startup namespace.');
 		}
 
-		$bundle = $this->buildBundle($sourceDirectory, $namespace);
+		$template = file_get_contents(__DIR__ . '/../build/phpstan.php.template');
+
+		if ($template === false) {
+			throw new RuntimeException('Could not read PHPStan entrypoint template.');
+		}
+
+		$entrypoint = $this->buildEntrypoint($sourceDirectory, $namespace, $template);
 
 		if (!is_dir($destination) && !mkdir($destination, 0755, true)) {
 			throw new RuntimeException('Could not create startup destination.');
 		}
 
-		if (file_put_contents($destination . '/phpstan-startup.php', $bundle) === false) {
-			throw new RuntimeException('Could not write startup bundle.');
-		}
-
-		$template = file_get_contents(__DIR__ . '/../build/phpstan.php.template');
-
-		if ($template === false || file_put_contents($destination . '/phpstan', str_replace('STARTUP_NAMESPACE', $namespace, $template)) === false) {
+		if (file_put_contents($destination . '/phpstan', $entrypoint) === false) {
 			throw new RuntimeException('Could not write PHPStan entrypoint.');
 		}
 
@@ -60,8 +61,7 @@ final class StartupBuilder
 		}
 
 		$manifest = json_encode([
-			'template' => hash('sha256', $template),
-			'bundle' => hash('sha256', str_replace($namespace, '_PHPStan_Startup', $bundle)),
+			'entrypoint' => hash('sha256', str_replace($namespace, '_PHPStan_Startup', $entrypoint)),
 			'builder' => $builderHash,
 		], JSON_THROW_ON_ERROR);
 
@@ -74,7 +74,7 @@ final class StartupBuilder
 		}
 	}
 
-	private function buildBundle(string $sourceDirectory, string $namespace): string
+	private function buildEntrypoint(string $sourceDirectory, string $namespace, string $template): string
 	{
 		$parser = (new ParserFactory())->createForNewestSupportedVersion();
 		$statements = [];
@@ -135,7 +135,14 @@ final class StartupBuilder
 			}
 		}
 
-		return "<?php declare(strict_types = 1);\n\n" . (new Standard())->prettyPrint($statements) . "\n";
+		$entrypointNodes = $parser->parse(str_replace('STARTUP_NAMESPACE', $namespace, $template));
+
+		if ($entrypointNodes === null) {
+			throw new RuntimeException('Empty PHPStan entrypoint template.');
+		}
+
+		return "#!/usr/bin/env php\n<?php declare(strict_types = 1);\n\n"
+			. (new Standard())->prettyPrint(array_merge($statements, $entrypointNodes)) . "\n";
 	}
 
 }

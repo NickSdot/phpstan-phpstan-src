@@ -1,17 +1,18 @@
-#!/usr/bin/env php
-<?php declare(strict_types = 1);
+<?php
 
-use STARTUP_NAMESPACE\Turbo\TurboProcessRestarter;
+namespace {
 
-(static function () {
-	require_once __DIR__ . '/phpstan-startup.php';
+	use STARTUP_NAMESPACE\Turbo\TurboProcessRestarter;
 
-	TurboProcessRestarter::restartIfSuitable($_SERVER['argv'], __DIR__ . '/phpstan.phar');
+	(static function () {
+		TurboProcessRestarter::restartIfSuitable($_SERVER['argv'], __DIR__ . '/phpstan.phar');
 
-	// Also avoid a second attempt inside the PHAR if pcntl_exec failed.
-	define('__PHPSTAN_RESTART_CHECKED__', true);
+		// Also avoid a second attempt inside the PHAR if pcntl_exec failed.
+		define('__PHPSTAN_RESTART_CHECKED__', true);
 
-	Phar::loadPhar(__DIR__ . '/phpstan.phar', 'phpstan.phar');
+		Phar::loadPhar(__DIR__ . '/phpstan.phar', 'phpstan.phar');
 
-	require 'phar://phpstan.phar/bin/phpstan';
-})();
+		require 'phar://phpstan.phar/bin/phpstan';
+	})();
+
+}
