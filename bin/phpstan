@@ -28,9 +28,11 @@ use Symfony\Component\Console\Helper\ProgressBar;
 	require_once __DIR__ . '/../src/Turbo/TurboExtensionEnabler.php';
 	require_once __DIR__ . '/../src/Turbo/TurboExtensionSelector.php';
 	require_once __DIR__ . '/../src/Turbo/TurboProcessRestarter.php';
+
 	if (!defined('__PHPSTAN_RESTART_CHECKED__')) {
 		TurboProcessRestarter::restartIfSuitable($_SERVER['argv']);
 	}
+
 	TurboExtensionEnabler::trustOwnTypesIfSuitable($_SERVER['argv']);
 
 	$analysisStartTime = microtime(true);
@@ -48,6 +50,7 @@ use Symfony\Component\Console\Helper\ProgressBar;
 		$vendorDirectory = $cwd . '/vendor';
 	}
 	$devOrPharLoader->unregister();
+
 	// Project autoload files can use PHPStan's API before its classes have
 	// been loaded. Forward only our classes and scoped dependencies so the
 	// project still gets its own versions of unscoped dependencies.
@@ -55,8 +58,10 @@ use Symfony\Component\Console\Helper\ProgressBar;
 		if (strpos($class, 'PHPStan\\') !== 0 && strpos($class, '_PHPStan_') !== 0) {
 			return;
 		}
+
 		$devOrPharLoader->loadClass($class);
 	};
+
 	spl_autoload_register($phpstanAutoloader, true, true);
 
 	// fix missing key for vendor/hoa/protocol/Wrapper.php

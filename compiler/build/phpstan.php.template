@@ -5,10 +5,13 @@ use STARTUP_NAMESPACE\Turbo\TurboProcessRestarter;
 
 (static function () {
 	require_once __DIR__ . '/phpstan-startup.php';
+
 	TurboProcessRestarter::restartIfSuitable($_SERVER['argv'], __DIR__ . '/phpstan.phar');
+
 	// Also avoid a second attempt inside the PHAR if pcntl_exec failed.
 	define('__PHPSTAN_RESTART_CHECKED__', true);
 
 	Phar::loadPhar(__DIR__ . '/phpstan.phar', 'phpstan.phar');
+
 	require 'phar://phpstan.phar/bin/phpstan';
 })();

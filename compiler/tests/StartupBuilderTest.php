@@ -46,8 +46,11 @@ final class StartupBuilderTest extends TestCase
 				copy($root . '/src/' . $class . '.php', $destination);
 			}
 
-			copy(__DIR__ . '/data/startup-downgrade.php', $directory . '/downgrade.php');
-			$downgrade = new Process([PHP_BINARY, $root . '/compiler/vendor/bin/simple-downgrade', 'downgrade', '-c', 'downgrade.php', '7.4'], $directory);
+			copy(__DIR__ . '/data/startup-downgrade.php.template', $directory . '/downgrade.php');
+			$downgrade = new Process(
+				[PHP_BINARY, $root . '/compiler/vendor/bin/simple-downgrade', 'downgrade', '-c', 'downgrade.php', '7.4'],
+				$directory,
+			);
 
 			self::assertSame(0, $downgrade->run(), $downgrade->getErrorOutput());
 
@@ -57,6 +60,7 @@ final class StartupBuilderTest extends TestCase
 			// Both artifacts retain PHP 7.4 syntax after namespace isolation.
 			$bundle = file_get_contents($directory . '/package/phpstan-startup.php');
 			self::assertNotFalse($bundle);
+
 			$parser = (new ParserFactory())->createForVersion(PhpVersion::fromString('7.4'));
 			self::assertNotNull($parser->parse($bundle));
 
@@ -71,7 +75,7 @@ final class StartupBuilderTest extends TestCase
 			self::assertSame($manifest, file_get_contents($directory . '/other-build/phpstan-startup.json'));
 
 			// Run without Composer or any classes held by PHPUnit.
-			copy(__DIR__ . '/data/startup-bundle-probe.php', $directory . '/probe.php');
+			copy(__DIR__ . '/data/startup-bundle-probe.php.template', $directory . '/probe.php');
 			$probe = new Process([PHP_BINARY, $directory . '/probe.php'], $directory);
 
 			self::assertSame(0, $probe->run(), $probe->getErrorOutput());
@@ -80,6 +84,7 @@ final class StartupBuilderTest extends TestCase
 			// A source change must still trigger the release checksum gate.
 			$source = file_get_contents($directory . '/src/Turbo/TurboExtensionSelector.php');
 			self::assertNotFalse($source);
+
 			file_put_contents($directory . '/src/Turbo/TurboExtensionSelector.php', str_replace('80300', '80400', $source));
 			$builder->build($directory, $directory . '/changed-build', '_PHPStan_test_Startup');
 

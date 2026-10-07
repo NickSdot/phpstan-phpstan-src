@@ -42,7 +42,7 @@ final class PreloadScriptTest extends TestCase
 				'vendor/nikic/php-parser/lib/PhpParser/Parser.php',
 				'vendor/phpstan/phpdoc-parser/src/Parser.php',
 			] as $path) {
-				copy(__DIR__ . '/data/preload-trace.php', $directory . '/' . $path);
+				copy(__DIR__ . '/data/preload-trace.php.template', $directory . '/' . $path);
 			}
 
 			$command = new PrepareCommand($this->createStub(Filesystem::class), $directory);
@@ -59,7 +59,7 @@ final class PreloadScriptTest extends TestCase
 			self::assertNotFalse($analysisPreload);
 			file_put_contents($directory . '/preload-analysis.php', str_replace('__DIR__', var_export($root, true), $analysisPreload));
 
-			copy(__DIR__ . '/data/preload-probe.php', $directory . '/probe.php');
+			copy(__DIR__ . '/data/preload-probe.php.template', $directory . '/probe.php');
 			$process = new Process(
 				[PHP_BINARY, $directory . '/probe.php', 'preload.php'],
 				$directory,

@@ -119,7 +119,7 @@ jobs:
       - name: "Stamp PHAR member timestamps"
         run: php compiler/build/resign.php tmp/phpstan.phar "$(git log -1 --format=%cI)"
 
-      - name: "Verify standalone launcher"
+      - name: "Verify packaged entrypoint"
         working-directory: compiler
         run: |
           ../tmp/phpstan --version
@@ -1666,15 +1666,15 @@ jobs:
           php ../../tmp/phpstan.phar analyse -vv 2>&1 | tee output-warm.txt
           grep -F "Result cache restored. 0 files will be reanalysed." output-warm.txt
 
-      - name: "Run standalone launcher with cold and warm result caches"
+      - name: "Run packaged entrypoint with cold and warm result caches"
         run: |
           php tmp/phpstan --version
           php tmp/phpstan --help
           cd e2e/phar-run
           php ../../tmp/phpstan clear-result-cache
-          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-launcher-cold.txt
-          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-launcher-warm.txt
-          grep -F "Result cache restored. 0 files will be reanalysed." output-launcher-warm.txt
+          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-entrypoint-cold.txt
+          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-entrypoint-warm.txt
+          grep -F "Result cache restored. 0 files will be reanalysed." output-entrypoint-warm.txt
 
   phar-run-windows:
     name: "Run PHAR on Windows, PHP ${{ matrix.php-version }}"
@@ -1760,6 +1760,8 @@ jobs:
           TURBO: ${{ matrix.turbo }}
         run: |
           php tmp/phpstan.phar --version
+          php tmp/phpstan --version
+          php tmp/phpstan --help
           cd e2e/phar-run
           php ../../tmp/phpstan.phar analyse -vvv --no-ansi 2>&1 | tee output.txt
           grep -F "Spawned worker 1/2 checked in: turbo $TURBO, OPcache on, trusted types $TURBO" output.txt
@@ -1773,6 +1775,9 @@ jobs:
         # the step fails.
         run: |
           cd e2e/phar-run
+          php ../../tmp/phpstan clear-result-cache
+          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-entrypoint-cold.txt
+
           FAILED=0
           check() {
             if grep -qF "Result cache restored. 0 files will be reanalysed." "$1"; then
@@ -1787,7 +1792,7 @@ jobs:
           echo "::group::Second run through the relative path"
           php ../../tmp/phpstan.phar analyse -vv --no-ansi 2>&1 | tee output-relative.txt
           echo "::endgroup::"
-          check output-relative.txt "relative invocation after the first run"
+          check output-relative.txt "relative PHAR invocation after the cold entrypoint run"
 
           # the invocation form the issue describes
           PHAR="$(cygpath -w "$GITHUB_WORKSPACE/tmp/phpstan.phar")"
@@ -1806,16 +1811,6 @@ jobs:
           check output-entrypoint-2.txt "entrypoint invocation after an entrypoint one"
 
           exit "$FAILED"
-
-      - name: "Run standalone launcher with cold and warm result caches"
-        run: |
-          php tmp/phpstan --version
-          php tmp/phpstan --help
-          cd e2e/phar-run
-          php ../../tmp/phpstan clear-result-cache
-          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-launcher-cold.txt
-          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-launcher-warm.txt
-          grep -F "Result cache restored. 0 files will be reanalysed." output-launcher-warm.txt
 
   integration-tests:
     if: github.event_name == 'pull_request'

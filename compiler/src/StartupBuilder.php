@@ -47,12 +47,14 @@ final class StartupBuilder
 		}
 
 		$template = file_get_contents(__DIR__ . '/../build/phpstan.php.template');
+
 		if ($template === false || file_put_contents($destination . '/phpstan', str_replace('STARTUP_NAMESPACE', $namespace, $template)) === false) {
 			throw new RuntimeException('Could not write PHPStan entrypoint.');
 		}
 
 		// Make launcher-only changes visible to the existing PHAR checksum gate.
 		$builderHash = hash_file('sha256', __FILE__);
+
 		if ($builderHash === false) {
 			throw new RuntimeException('Could not hash startup builder.');
 		}
@@ -79,11 +81,13 @@ final class StartupBuilder
 
 		foreach (['Turbo/TurboExtensionSelector', 'Turbo/TurboProcessRestarter'] as $class) {
 			$code = file_get_contents($sourceDirectory . '/src/' . $class . '.php');
+
 			if ($code === false) {
 				throw new RuntimeException('Could not read startup source: ' . $class);
 			}
 
 			$nodes = $parser->parse($code);
+
 			if ($nodes === null) {
 				throw new RuntimeException('Empty startup source: ' . $class);
 			}

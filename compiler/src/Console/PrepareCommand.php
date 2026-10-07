@@ -62,6 +62,7 @@ final class PrepareCommand extends Command
 		$this->renamePhp8Stubs();
 		$this->transformSource();
 		$this->buildStartup();
+
 		return 0;
 	}
 
@@ -305,10 +306,16 @@ php;
 	private function buildStartup(): void
 	{
 		exec('git rev-parse --short HEAD', $commit, $exitCode);
+
 		if ($exitCode !== 0 || !isset($commit[0])) {
 			throw new ShouldNotHappenException('Could not determine startup build namespace.');
 		}
-		(new StartupBuilder())->build($this->buildDir, $this->buildDir . '/tmp', '_PHPStan_' . $commit[0] . '_Startup');
+
+		(new StartupBuilder())->build(
+			$this->buildDir,
+			$this->buildDir . '/tmp',
+			'_PHPStan_' . $commit[0] . '_Startup',
+		);
 	}
 
 	private function transformSource(): void
