@@ -9,6 +9,7 @@
   "files": [
 	"preload.php",
 	"preload-analysis.php",
+	"tmp/phpstan-startup.json",
 	"vendor/composer/installed.php",
     "vendor/attributes.php",
     "vendor/turbo-shadowed-classes.json",

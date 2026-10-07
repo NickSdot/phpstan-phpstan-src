@@ -119,10 +119,19 @@ jobs:
       - name: "Stamp PHAR member timestamps"
         run: php compiler/build/resign.php tmp/phpstan.phar "$(git log -1 --format=%cI)"
 
+      - name: "Verify standalone launcher"
+        working-directory: compiler
+        run: |
+          ../tmp/phpstan --version
+          php ../tmp/phpstan --help
+
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: phar-file
-          path: tmp/phpstan.phar
+          path: |
+            tmp/phpstan.phar
+            tmp/phpstan
+            tmp/phpstan-startup.php
 
       - name: "Run PHAR"
         working-directory: "compiler"
@@ -1657,6 +1666,16 @@ jobs:
           php ../../tmp/phpstan.phar analyse -vv 2>&1 | tee output-warm.txt
           grep -F "Result cache restored. 0 files will be reanalysed." output-warm.txt
 
+      - name: "Run standalone launcher with cold and warm result caches"
+        run: |
+          php tmp/phpstan --version
+          php tmp/phpstan --help
+          cd e2e/phar-run
+          php ../../tmp/phpstan clear-result-cache
+          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-launcher-cold.txt
+          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-launcher-warm.txt
+          grep -F "Result cache restored. 0 files will be reanalysed." output-launcher-warm.txt
+
   phar-run-windows:
     name: "Run PHAR on Windows, PHP ${{ matrix.php-version }}"
     needs:
@@ -1779,17 +1798,24 @@ jobs:
           check output-absolute-1.txt "absolute invocation after the relative ones"
           check output-absolute-2.txt "absolute invocation after an absolute one"
 
-          # vendor/phpstan/phpstan/phpstan, the entry point of a Composer install, maps the
-          # archive under its alias and requires bin/phpstan through it
-          printf '%s\n' '<?php' "Phar::loadPhar(__DIR__ . '/phpstan.phar', 'phpstan.phar');" "require 'phar://phpstan.phar/bin/phpstan';" > ../../tmp/phpstan
-          echo "::group::Runs through a Composer-style wrapper"
-          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-wrapper-1.txt
-          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-wrapper-2.txt
+          echo "::group::Runs through the packaged entrypoint"
+          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-entrypoint-1.txt
+          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-entrypoint-2.txt
           echo "::endgroup::"
-          check output-wrapper-1.txt "wrapper invocation after the direct ones"
-          check output-wrapper-2.txt "wrapper invocation after a wrapper one"
+          check output-entrypoint-1.txt "entrypoint invocation after the direct ones"
+          check output-entrypoint-2.txt "entrypoint invocation after an entrypoint one"
 
           exit "$FAILED"
+
+      - name: "Run standalone launcher with cold and warm result caches"
+        run: |
+          php tmp/phpstan --version
+          php tmp/phpstan --help
+          cd e2e/phar-run
+          php ../../tmp/phpstan clear-result-cache
+          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-launcher-cold.txt
+          php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-launcher-warm.txt
+          grep -F "Result cache restored. 0 files will be reanalysed." output-launcher-warm.txt
 
   integration-tests:
     if: github.event_name == 'pull_request'
@@ -2135,13 +2161,15 @@ jobs:
         with:
           name: phar-file
 
-      - name: "mv PHAR"
+      - name: "Install PHPStan build artifacts"
         if: startsWith(github.ref, 'refs/tags/') || steps.checksum-difference.outputs.result == 'different'
-        run: mv phpstan.phar phpstan-dist/phpstan.phar
+        run: |
+          mv phpstan.phar phpstan-dist/phpstan.phar
+          mv phpstan phpstan-startup.php phpstan-dist/
 
-      - name: "chmod PHAR"
+      - name: "Make PHPStan entrypoints executable"
         if: startsWith(github.ref, 'refs/tags/') || steps.checksum-difference.outputs.result == 'different'
-        run: chmod 755 phpstan-dist/phpstan.phar
+        run: chmod 755 phpstan-dist/phpstan phpstan-dist/phpstan.phar
 
       - name: "Update checksum"
         if: startsWith(github.ref, 'refs/tags/') || steps.checksum-difference.outputs.result == 'different'

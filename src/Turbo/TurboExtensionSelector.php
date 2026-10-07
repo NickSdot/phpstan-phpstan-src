@@ -73,7 +73,7 @@ final class TurboExtensionSelector
 	 * Locates the distributed extension binary for the current platform —
 	 * present only next to a phar-based installation.
 	 */
-	public static function findExtension(): ?string
+	public static function findExtension(?string $pharPath = null): ?string
 	{
 		if (PHP_VERSION_ID < self::MINIMUM_PHP_VERSION_ID) {
 			return null;
@@ -82,7 +82,7 @@ final class TurboExtensionSelector
 			return null;
 		}
 
-		$pharPath = Phar::running(false);
+		$pharPath ??= Phar::running(false);
 		if ($pharPath === '') {
 			return null;
 		}

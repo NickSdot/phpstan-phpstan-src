@@ -28,7 +28,9 @@ use Symfony\Component\Console\Helper\ProgressBar;
 	require_once __DIR__ . '/../src/Turbo/TurboExtensionEnabler.php';
 	require_once __DIR__ . '/../src/Turbo/TurboExtensionSelector.php';
 	require_once __DIR__ . '/../src/Turbo/TurboProcessRestarter.php';
-	TurboProcessRestarter::restartIfSuitable($_SERVER['argv']);
+	if (!defined('__PHPSTAN_RESTART_CHECKED__')) {
+		TurboProcessRestarter::restartIfSuitable($_SERVER['argv']);
+	}
 	TurboExtensionEnabler::trustOwnTypesIfSuitable($_SERVER['argv']);
 
 	$analysisStartTime = microtime(true);

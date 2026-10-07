@@ -5,6 +5,7 @@ namespace PHPStan\Compiler\Console;
 use Exception;
 use PHPStan\Compiler\Filesystem\Filesystem;
 use PHPStan\Compiler\InlineEditsApplier;
+use PHPStan\Compiler\StartupBuilder;
 use PHPStan\ShouldNotHappenException;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -60,6 +61,7 @@ final class PrepareCommand extends Command
 		$this->renamePhpStormStubs();
 		$this->renamePhp8Stubs();
 		$this->transformSource();
+		$this->buildStartup();
 		return 0;
 	}
 
@@ -298,6 +300,15 @@ php;
 		$stats = (new InlineEditsApplier())->apply($editsFile);
 		unlink($editsFile);
 		$output->writeln(sprintf('Inlined %d call sites in %d files, %d properties made public', $stats['edits'], $stats['files'], $stats['properties']));
+	}
+
+	private function buildStartup(): void
+	{
+		exec('git rev-parse --short HEAD', $commit, $exitCode);
+		if ($exitCode !== 0 || !isset($commit[0])) {
+			throw new ShouldNotHappenException('Could not determine startup build namespace.');
+		}
+		(new StartupBuilder())->build($this->buildDir, $this->buildDir . '/tmp', '_PHPStan_' . $commit[0] . '_Startup');
 	}
 
 	private function transformSource(): void

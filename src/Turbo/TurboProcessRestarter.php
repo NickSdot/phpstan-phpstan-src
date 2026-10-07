@@ -95,11 +95,14 @@ final class TurboProcessRestarter
 	}
 
 	/**
+	 * The standalone launcher passes the archive path before opening it, so
+	 * the restarted process only reads and verifies the archive once.
+	 *
 	 * On success the call never returns — the process image is replaced.
 	 *
 	 * @param list<string> $argv
 	 */
-	public static function restartIfSuitable(array $argv): void
+	public static function restartIfSuitable(array $argv, ?string $pharPath = null): void
 	{
 		if (get_cfg_var(self::RESTARTED_INI) !== false) {
 			// already restarted — whatever did not take effect (a binary that
@@ -127,7 +130,7 @@ final class TurboProcessRestarter
 			return;
 		}
 
-		$extensionPath = extension_loaded('phpstan_turbo') ? null : TurboExtensionSelector::findExtension();
+		$extensionPath = extension_loaded('phpstan_turbo') ? null : TurboExtensionSelector::findExtension($pharPath);
 		$opcacheArgs = self::getOpcacheArgs();
 		if (
 			$extensionPath === null
