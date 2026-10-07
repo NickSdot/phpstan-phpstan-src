@@ -1667,8 +1667,6 @@ jobs:
 
       - name: "Run packaged entrypoint with cold and warm result caches"
         run: |
-          php tmp/phpstan --version
-          php tmp/phpstan --help
           cd e2e/phar-run
           php ../../tmp/phpstan clear-result-cache
           php ../../tmp/phpstan analyse -vv --no-ansi 2>&1 | tee output-entrypoint-cold.txt
@@ -1759,8 +1757,6 @@ jobs:
           TURBO: ${{ matrix.turbo }}
         run: |
           php tmp/phpstan.phar --version
-          php tmp/phpstan --version
-          php tmp/phpstan --help
           cd e2e/phar-run
           php ../../tmp/phpstan.phar analyse -vvv --no-ansi 2>&1 | tee output.txt
           grep -F "Spawned worker 1/2 checked in: turbo $TURBO, OPcache on, trusted types $TURBO" output.txt
