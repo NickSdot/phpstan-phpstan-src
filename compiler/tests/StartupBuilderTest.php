@@ -28,22 +28,27 @@ final class StartupBuilderTest extends TestCase
 	{
 		$root = dirname(__DIR__, 2);
 		require_once $root . '/compiler/src/StartupBuilder.php';
+
 		$directory = tempnam(sys_get_temp_dir(), 'phpstan-startup-build-');
 		self::assertNotFalse($directory);
+
 		unlink($directory);
 		mkdir($directory);
 
 		try {
 			foreach (['Turbo/TurboExtensionSelector', 'Turbo/TurboProcessRestarter'] as $class) {
 				$destination = $directory . '/src/' . $class . '.php';
+
 				if (!is_dir(dirname($destination))) {
 					mkdir(dirname($destination), 0755, true);
 				}
+
 				copy($root . '/src/' . $class . '.php', $destination);
 			}
 
-			file_put_contents($directory . '/downgrade.php', '<?php return ["paths" => [__DIR__ . "/src"], "excludePaths" => []];');
+			copy(__DIR__ . '/data/startup-downgrade.php', $directory . '/downgrade.php');
 			$downgrade = new Process([PHP_BINARY, $root . '/compiler/vendor/bin/simple-downgrade', 'downgrade', '-c', 'downgrade.php', '7.4'], $directory);
+
 			self::assertSame(0, $downgrade->run(), $downgrade->getErrorOutput());
 
 			$builder = new StartupBuilder();
@@ -54,6 +59,7 @@ final class StartupBuilderTest extends TestCase
 			self::assertNotFalse($bundle);
 			$parser = (new ParserFactory())->createForVersion(PhpVersion::fromString('7.4'));
 			self::assertNotNull($parser->parse($bundle));
+
 			$entrypoint = file_get_contents($directory . '/package/phpstan');
 			self::assertNotFalse($entrypoint);
 			self::assertNotNull($parser->parse($entrypoint));
@@ -61,25 +67,13 @@ final class StartupBuilderTest extends TestCase
 			// A build namespace change must not churn the release checksum.
 			$manifest = file_get_contents($directory . '/package/phpstan-startup.json');
 			$builder->build($directory, $directory . '/other-build', '_PHPStan_other_Startup');
+
 			self::assertSame($manifest, file_get_contents($directory . '/other-build/phpstan-startup.json'));
 
 			// Run without Composer or any classes held by PHPUnit.
-			$probeScript = <<<'PHP'
-<?php declare(strict_types = 1);
-
-require __DIR__ . '/package/phpstan-startup.php';
-
-$_SERVER['BLACKFIRE_AGENT_SOCKET'] = 'test';
-\_PHPStan_test_Startup\Turbo\TurboProcessRestarter::restartIfSuitable(['phpstan', 'analyse']);
-
-if (\_PHPStan_test_Startup\Turbo\TurboExtensionSelector::findExtension(__DIR__ . '/phpstan.phar') !== null) {
-	exit(2);
-}
-
-echo 'ok';
-PHP;
-			file_put_contents($directory . '/probe.php', $probeScript);
+			copy(__DIR__ . '/data/startup-bundle-probe.php', $directory . '/probe.php');
 			$probe = new Process([PHP_BINARY, $directory . '/probe.php'], $directory);
+
 			self::assertSame(0, $probe->run(), $probe->getErrorOutput());
 			self::assertSame('ok', $probe->getOutput());
 
@@ -88,9 +82,14 @@ PHP;
 			self::assertNotFalse($source);
 			file_put_contents($directory . '/src/Turbo/TurboExtensionSelector.php', str_replace('80300', '80400', $source));
 			$builder->build($directory, $directory . '/changed-build', '_PHPStan_test_Startup');
+
 			self::assertNotSame($manifest, file_get_contents($directory . '/changed-build/phpstan-startup.json'));
 		} finally {
-			$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
+			$files = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator($directory, RecursiveDirectoryIterator::SKIP_DOTS),
+				RecursiveIteratorIterator::CHILD_FIRST,
+			);
+
 			foreach ($files as $file) {
 				if ($file->isDir()) {
 					rmdir($file->getPathname());

@@ -5,6 +5,7 @@ namespace PHPStan\Command;
 use JsonException;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
+use function copy;
 use function dirname;
 use function file_get_contents;
 use function file_put_contents;
@@ -26,27 +27,21 @@ final class ProjectAutoloadIntegrationTest extends TestCase
 	{
 		$directory = tempnam(sys_get_temp_dir(), 'phpstan-startup-');
 		self::assertNotFalse($directory);
+
 		unlink($directory);
 		mkdir($directory . '/vendor', 0755, true);
+
 		file_put_contents($directory . '/composer.json', '{}');
-		file_put_contents($directory . '/vendor/autoload.php', <<<'PHP'
-<?php
-spl_autoload_register(static function (string $class): void {
-});
+		copy(__DIR__ . '/data/startup-project-autoload.php', $directory . '/vendor/autoload.php');
 
-$apiAvailable = interface_exists(\PHPStan\Rules\Rule::class);
-
-register_shutdown_function(static function () use ($apiAvailable): void {
-	file_put_contents(getenv('PHPSTAN_STARTUP_PROBE'), json_encode([
-		'restarted' => get_cfg_var('phpstan.restarted') !== false,
-		'apiAvailable' => $apiAvailable,
-		'customAutoloaders' => count($GLOBALS['__phpstanAutoloadFunctions'] ?? []),
-	]));
-});
-PHP);
 		try {
 			$probe = $directory . '/probe';
-			$process = new Process([PHP_BINARY, '-d', 'opcache.enable_cli=0', dirname(__DIR__, 3) . '/bin/phpstan', '--version'], $directory, ['PHPSTAN_STARTUP_PROBE' => $probe, 'BLACKFIRE_AGENT_SOCKET' => 'test']);
+			$process = new Process(
+				[PHP_BINARY, '-d', 'opcache.enable_cli=0', dirname(__DIR__, 3) . '/bin/phpstan', '--version'],
+				$directory,
+				['PHPSTAN_STARTUP_PROBE' => $probe, 'BLACKFIRE_AGENT_SOCKET' => 'test'],
+			);
+
 			self::assertSame(0, $process->run(), $process->getErrorOutput());
 
 			$contents = file_get_contents($probe);
@@ -60,9 +55,11 @@ PHP);
 			unlink($directory . '/vendor/autoload.php');
 			rmdir($directory . '/vendor');
 			unlink($directory . '/composer.json');
+
 			if (is_file($directory . '/probe')) {
 				unlink($directory . '/probe');
 			}
+
 			rmdir($directory);
 		}
 	}

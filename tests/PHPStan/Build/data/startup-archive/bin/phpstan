@@ -1,0 +1,10 @@
+<?php namespace _PHPStan_startup_test;
+// Loading these after the isolated copies also checks for redeclarations.
+require __DIR__ . '/../src/Turbo/TurboExtensionSelector.php';
+require __DIR__ . '/../src/Turbo/TurboProcessRestarter.php';
+
+if (!defined('__PHPSTAN_RESTART_CHECKED__')) {
+	throw new RuntimeException('The archive would attempt to restart again.');
+}
+
+echo "archive\n";
